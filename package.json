@@ -13,9 +13,9 @@
     "db:studio": "prisma studio",
     "cron:local": "tsx scripts/local-cron.ts",
     "postinstall": "prisma generate",
-    "db:use-postgres": "bash scripts/use-postgres.sh",
     "setup": "prisma db push && tsx prisma/seed.ts",
-    "icons": "node scripts/make-icons.mjs"
+    "icons": "node scripts/make-icons.mjs",
+    "db:use-sqlite": "bash scripts/use-sqlite.sh"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.8.0",

@@ -19,10 +19,11 @@ npm install
 cp .env.example .env
 ```
 
-Edit `.env` and set the three required values:
+Edit `.env` and set the required values:
 
 | Variable          | What it is                                                                                     |
 | ----------------- | ---------------------------------------------------------------------------------------------- |
+| `DATABASE_URL` / `DIRECT_URL` | Supabase Postgres connection strings (see section 5). For an offline SQLite file instead, run `npm run db:use-sqlite`. |
 | `JARVIS_PASSWORD` | Your password/PIN for the HUD and admin panel (min. 4 characters).                             |
 | `AUTH_SECRET`     | 32+ random characters. Signs your login cookie **and** encrypts API keys stored in the DB.     |
 | `CRON_SECRET`     | Random token that protects `/api/cron/*` and the automation endpoints.                         |
@@ -36,7 +37,7 @@ openssl rand -base64 48
 > ⚠️ If you change `AUTH_SECRET` later, stored API keys can no longer be decrypted.
 > Re-enter them in /admin.
 
-Create the database and seed sample contacts:
+Create the tables and seed sample contacts (skip this if the tables already exist in Supabase):
 
 ```bash
 npm run setup
@@ -215,25 +216,43 @@ time you tap the orb. On iOS, voice recognition requires iOS 14.5+ Safari.
 
 ---
 
-## 5. Deploy to production
+## 5. Deploy to production (Vercel + Supabase, both free)
 
-1. Switch Prisma to PostgreSQL (Neon, Supabase, Railway, RDS, …):
+### Database (Supabase)
 
-   ```bash
-   npm run db:use-postgres
-   ```
+The `jarvis` Supabase project (region `ap-south-1`) already has every table created,
+with row-level security on, so Supabase's public API can't read them. The app
+connects as the database owner.
 
-   Set `DATABASE_URL=postgresql://user:pass@host:5432/jarvis?sslmode=require`, then create the tables:
+1. Supabase dashboard → project **jarvis** → **Project Settings → Database → Reset database password**.
+   Pick a strong password and save it somewhere safe.
+2. Click **Connect** (top bar) → **ORMs → Prisma**. Copy the two strings and put your password in both:
+   - `DATABASE_URL`: the pooled one, port **6543**. Make sure it ends with `?pgbouncer=true&connection_limit=1`.
+   - `DIRECT_URL`: the session one, port **5432**.
 
-   ```bash
-   npm run setup
-   ```
+Schema changes later on: edit `prisma/schema.prisma`, then run `npx prisma db push`.
+It uses `DIRECT_URL`.
 
-2. Set the env vars on your host: `DATABASE_URL`, `JARVIS_PASSWORD`, `AUTH_SECRET`,
-   `CRON_SECRET`, `APP_URL` (your public HTTPS URL, no trailing slash).
-3. Deploy: `npm run build && npm start` (Node host) or push to Vercel.
-4. Update the Google redirect URI and WhatsApp webhook URL to the production domain.
-5. Configure cron (section 3), then install the PWA (section 4).
+### App (Vercel)
+
+1. https://vercel.com → sign in with GitHub → **Add New → Project** → import `jarvis`.
+2. Under **Environment Variables**, add:
+
+   | Name              | Value                                                   |
+   | ----------------- | ------------------------------------------------------- |
+   | `DATABASE_URL`    | pooled Supabase URL (port 6543)                         |
+   | `DIRECT_URL`      | direct Supabase URL (port 5432)                         |
+   | `JARVIS_PASSWORD` | your login password                                     |
+   | `AUTH_SECRET`     | `openssl rand -base64 48`                               |
+   | `CRON_SECRET`     | `openssl rand -hex 24`                                  |
+   | `APP_URL`         | `https://<your-project>.vercel.app` (no trailing slash) |
+
+3. **Deploy**. After the first deploy, check that `APP_URL` matches the real domain; if it doesn't, fix it and redeploy.
+4. Optional, for lower latency: **Settings → Functions → Region** → Mumbai (`bom1`), next to the database.
+5. Update the Google redirect URI and the WhatsApp webhook URL to the Vercel domain.
+6. Configure cron (section 3), then install the PWA (section 4).
+
+Self-hosting on any Node server works too: set the same variables, then run `npm run build && npm start`.
 
 ### Security notes
 

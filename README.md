@@ -38,7 +38,7 @@ Service layer (src/lib/services) ─ every integration has a mock fallback
   contacts.ts      fuzzy name/nickname resolution
   logger.ts        ActionLog audit trail
         │
-Prisma ─ SQLite (dev) / PostgreSQL (prod)
+Prisma ─ PostgreSQL (Supabase); SQLite optional for offline dev
   UserConfig (encrypted secrets) · Contact · EmailLog · MeetingReminder · WhatsAppMessage · ActionLog
 ```
 
@@ -49,7 +49,7 @@ Prisma ─ SQLite (dev) / PostgreSQL (prod)
 | `npm run dev`             | Dev server on :3000                             |
 | `npm run setup`           | Create/patch DB schema + seed sample contacts   |
 | `npm run cron:local`      | Local scheduler hitting the cron endpoints      |
-| `npm run db:use-postgres` | Switch Prisma provider to PostgreSQL            |
+| `npm run db:use-sqlite`   | Optional offline SQLite DB for local dev        |
 | `npm run db:studio`       | Browse the database                             |
 | `npm run build && npm start` | Production build / server                    |
 | `npm run typecheck`       | TypeScript check                                |
