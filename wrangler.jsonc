@@ -5,10 +5,8 @@
   "main": "custom-worker.ts",
   "compatibility_date": "2026-11-01",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
-  "assets": {
-    "directory": ".open-next/assets",
-    "binding": "ASSETS"
-  },
+  // Static files are embedded in the Worker (scripts/embed-assets.mjs), so
+  // there is no "assets" upload step at deploy time.
   "observability": { "enabled": true },
 
   // Cloudflare D1 (SQLite), region APAC.

@@ -229,14 +229,17 @@ time you tap the orb. On iOS, voice recognition requires iOS 14.5+ Safari.
 The app runs as a **Cloudflare Worker** (Next.js via OpenNext), the database is **Cloudflare D1**,
 and background jobs use **Cron Triggers**. All three are on Cloudflare's free plan.
 
+Static files are embedded in the Worker script by `scripts/embed-assets.mjs`, so a
+deploy is a single script upload (about 2.7 MiB compressed, under the free plan's 3 MiB limit).
+
 ### Option A: from the Cloudflare dashboard (no terminal needed)
 
 1. Go to https://dash.cloudflare.com, sign up or log in, then open **Workers & Pages → Create → Import a repository**.
    Connect GitHub and pick `jarvis`.
 2. Configure the project:
    - **Project name:** `jarvis` (must match `name` in `wrangler.jsonc`)
-   - **Build command:** `npx opennextjs-cloudflare build`
-   - **Deploy command:** `npx opennextjs-cloudflare deploy && npx wrangler d1 migrations apply jarvis-db --remote`
+   - **Build command:** `npm run build:cf`
+   - **Deploy command:** `npx wrangler deploy && npx wrangler d1 migrations apply jarvis-db --remote`
 3. Click **Deploy**. The first deploy automatically creates the D1 database `jarvis-db`, then creates the tables.
 4. Open the Worker's **Settings → Variables and Secrets** and add three values, each with type **Secret**:
    `JARVIS_PASSWORD`, `AUTH_SECRET`, `CRON_SECRET` (random strings: 40+ characters for

@@ -11,13 +11,14 @@
     "cron:local": "tsx scripts/local-cron.ts",
     "postinstall": "prisma generate",
     "icons": "node scripts/make-icons.mjs",
-    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
-    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy && wrangler d1 migrations apply jarvis-db --remote",
+    "preview": "npm run build:cf && wrangler dev",
+    "deploy": "npm run build:cf && wrangler deploy && wrangler d1 migrations apply jarvis-db --remote",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
     "db:migrate:local": "wrangler d1 migrations apply jarvis-db --local",
     "db:migrate:remote": "wrangler d1 migrations apply jarvis-db --remote",
     "db:seed:local": "wrangler d1 execute jarvis-db --local --file=scripts/seed.local.sql",
-    "setup": "npm run db:migrate:local && npm run db:seed:local"
+    "setup": "npm run db:migrate:local && npm run db:seed:local",
+    "build:cf": "opennextjs-cloudflare build && node scripts/embed-assets.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.8.0",
