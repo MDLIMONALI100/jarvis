@@ -224,6 +224,8 @@ After installing, open J.A.R.V.I.S. from the home screen and tap the **bell** in
 or go to **Admin → Calls & Alerts → Enable on this device**, then **Send test notification**.
 Meeting reminders and urgent-email alerts then arrive as notifications, at no cost and with no limit.
 iPhone needs iOS 16.4+ and the app opened from the home screen; Android works in Chrome.
+Set the `APP_URL` secret to your live https address: Apple's push service (iPhone, iPad, Mac Safari)
+rejects notifications without it (`403 BadJwtToken`).
 Phone calls (Vapi/Twilio) are optional and only used if you configure a voice provider.
 
 It launches full-screen with its own icon. Long-press the icon on Android for the

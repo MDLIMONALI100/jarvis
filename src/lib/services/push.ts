@@ -115,7 +115,7 @@ export async function encryptPayload(payload: B, uaPublicB64: string, authSecret
 
 type Sub = { id: string; endpoint: string; p256dh: string; auth: string; failures: number };
 
-async function sendOne(sub: Sub, msg: PushMessage, keys: VapidKeys, subject: string): Promise<{ ok: boolean; status: number; gone: boolean }> {
+async function sendOne(sub: Sub, msg: PushMessage, keys: VapidKeys, subject: string): Promise<{ ok: boolean; status: number; gone: boolean; reason: string }> {
   const body = await encryptPayload(enc.encode(JSON.stringify(msg)), sub.p256dh, sub.auth);
   const res = await fetch(sub.endpoint, {
     method: "POST",
@@ -130,14 +130,18 @@ async function sendOne(sub: Sub, msg: PushMessage, keys: VapidKeys, subject: str
     body,
     signal: AbortSignal.timeout(15_000),
   });
-  return { ok: res.ok, status: res.status, gone: res.status === 404 || res.status === 410 };
+  // Push services explain rejections in the body (e.g. Apple: {"reason":"BadJwtToken"}).
+  const reason = res.ok ? "" : (await res.text().catch(() => "")).slice(0, 200);
+  return { ok: res.ok, status: res.status, gone: res.status === 404 || res.status === 410, reason };
 }
 
 /**
  * Sends a notification to every subscribed device. Expired subscriptions are
  * removed automatically. Returns how many devices accepted it.
  */
-// VAPID "sub" claim: a contact URL for the push services (must be mailto: or https:).
+// VAPID "sub" claim: a contact URL for the push services. Apple's push service
+// rejected a generic mailto: here (403 BadJwtToken) but accepts the app's own
+// https URL, so set APP_URL in production.
 const vapidSubject = () => process.env.APP_URL || "mailto:jarvis-push@users.noreply.github.com";
 
 export async function sendPush(cfg: ResolvedConfig, msg: PushMessage, reason = "manual") {
@@ -153,12 +157,12 @@ export async function sendPush(cfg: ResolvedConfig, msg: PushMessage, reason = "
       if (r.ok) {
         sent++;
         await prisma.pushSubscription.update({ where: { id: sub.id }, data: { failures: 0, lastSuccessAt: new Date() } });
-      } else if (r.gone || sub.failures >= 9) {
+      } else if (r.gone || sub.failures >= 49) {
         await prisma.pushSubscription.delete({ where: { id: sub.id } });
         errors.push(`${r.status} (device unsubscribed, removed)`);
       } else {
         await prisma.pushSubscription.update({ where: { id: sub.id }, data: { failures: { increment: 1 } } });
-        errors.push(`push service responded ${r.status}`);
+        errors.push(`${new URL(sub.endpoint).host} responded ${r.status}${r.reason ? `: ${r.reason}` : ""}`);
       }
     } catch (e) {
       errors.push(e instanceof Error ? e.message : String(e));
