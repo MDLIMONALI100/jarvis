@@ -7,7 +7,9 @@ import type { ResolvedConfig } from "../config";
 export const DEFAULT_MODELS = {
   openai: "gpt-4o-mini",
   anthropic: "claude-opus-5-5",
-  gemini: "gemini-2.0-flash",
+  // Google aliases that track the current models. Flash-Lite answers in ~2s;
+  // full Flash was 35-55s per call on the free tier, too slow for voice.
+  gemini: "gemini-flash-lite-latest",
 } as const;
 
 export class LlmUnavailableError extends Error {}
@@ -95,13 +97,34 @@ export async function completeJson<T>(cfg: ResolvedConfig, req: JsonRequest): Pr
 
   if (cfg.llmProvider === "gemini") {
     const genAI = new GoogleGenerativeAI(key);
-    const m = genAI.getGenerativeModel({
-      model: model(cfg),
-      systemInstruction: req.system,
-      generationConfig: { responseMimeType: "application/json", maxOutputTokens: maxTokens },
-    });
-    const res = await m.generateContent(`${req.user}\n\nRespond with JSON matching this schema:\n${JSON.stringify(req.schema)}`);
-    return extractJson(res.response.text()) as T;
+    const prompt = `${req.user}\n\nRespond with JSON matching this schema:\n${JSON.stringify(req.schema)}`;
+    // The free tier sometimes answers 503 "high demand": retry, then fall back
+    // to the other Flash alias.
+    const primary = model(cfg);
+    const fallback = primary === "gemini-flash-lite-latest" ? "gemini-flash-latest" : "gemini-flash-lite-latest";
+    const attempts = [primary, primary, fallback];
+    let lastErr: unknown;
+    for (const [i, name] of attempts.entries()) {
+      try {
+        const m = genAI.getGenerativeModel(
+          {
+            model: name,
+            systemInstruction: req.system,
+            // Newer Flash models spend part of this budget on thinking.
+            generationConfig: { responseMimeType: "application/json", maxOutputTokens: Math.max(maxTokens, 8192) },
+          },
+          { timeout: 25_000 },
+        );
+        const res = await m.generateContent(prompt);
+        return extractJson(res.response.text()) as T;
+      } catch (e) {
+        lastErr = e;
+        const msg = e instanceof Error ? e.message : String(e);
+        if (!/\b(503|429|500)\b|overloaded|high demand|timed? ?out|abort/i.test(msg)) throw e;
+        if (i < attempts.length - 1) await new Promise((r) => setTimeout(r, 800 * (i + 1)));
+      }
+    }
+    throw lastErr;
   }
 
   throw new LlmUnavailableError(`Unknown provider ${cfg.llmProvider}`);

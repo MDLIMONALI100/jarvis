@@ -16,7 +16,7 @@ const N8N_ACTIONS = [
 const MODEL_HINT: Record<string, string> = {
   openai: "Default: gpt-4o-mini",
   anthropic: "Default: claude-opus-5-5",
-  gemini: "Default: gemini-2.0-flash",
+  gemini: "Default: gemini-flash-lite-latest (fast, free, auto-updating)",
   mock: "Offline rule-based parser — no AI key needed",
 };
 

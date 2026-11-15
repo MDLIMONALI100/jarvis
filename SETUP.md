@@ -76,7 +76,7 @@ admin values win when both are set.
 | --------- | ----------------------------------------------- | -------------------- |
 | Anthropic | https://console.anthropic.com → API Keys        | `claude-opus-5-5`    |
 | OpenAI    | https://platform.openai.com/api-keys            | `gpt-4o-mini`        |
-| Gemini    | https://aistudio.google.com/apikey              | `gemini-2.0-flash`   |
+| Gemini    | https://aistudio.google.com/apikey (free tier)  | `gemini-flash-lite-latest` |
 
 Choose the provider, paste the key, **Save**, then **Test AI connection**.
 You can override the model name in the field next to the provider. If the AI call
