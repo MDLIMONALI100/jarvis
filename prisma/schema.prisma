@@ -1,0 +1,181 @@
+// J.A.R.V.I.S. data model
+// ---------------------------------------------------------------------------
+// Portable across SQLite (local dev) and PostgreSQL (production):
+//  * no native enums (string columns + TypeScript unions in src/lib/types.ts)
+//  * no Json columns (JSON stored as TEXT and parsed in the service layer)
+// Switch provider with `npm run db:use-postgres` (see SETUP.md).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+/// Single-row configuration (id = "singleton"). Every secret column holds
+/// AES-256-GCM ciphertext ("enc:v1:..."), never plain text.
+model UserConfig {
+  id                 String   @id @default("singleton")
+
+  // Identity & personality
+  ownerName          String   @default("Sir")
+  assistantName      String   @default("J.A.R.V.I.S.")
+  timezone           String   @default("UTC")
+  systemPrompt       String   @default("")
+
+  // LLM
+  llmProvider        String   @default("mock") // mock | openai | anthropic | gemini
+  llmModel           String   @default("")
+  openaiApiKey       String?
+  anthropicApiKey    String?
+  geminiApiKey       String?
+
+  // Voice calls
+  voiceProvider      String   @default("mock") // mock | vapi | twilio
+  vapiApiKey         String?
+  vapiPublicKey      String?
+  vapiAssistantId    String?
+  vapiPhoneNumberId  String?
+  twilioAccountSid   String?
+  twilioAuthToken    String?
+  twilioFromNumber   String?
+  twilioVoice        String   @default("Polly.Brian")
+
+  // WhatsApp
+  whatsappProvider   String   @default("mock") // mock | cloud | twilio
+  whatsappToken      String?
+  whatsappPhoneId    String?
+  whatsappVerifyToken String?
+  whatsappAppSecret  String?
+  twilioWhatsappFrom String?
+
+  // Google (Gmail + Calendar)
+  googleClientId     String?
+  googleClientSecret String?
+  googleRefreshToken String?
+  googleEmail        String?
+  googleCalendarId   String   @default("primary")
+
+  // n8n bridge
+  n8nEnabled         Boolean  @default(false)
+  n8nWebhooks        String   @default("{}") // JSON: { whatsapp, call, emailTriage, meetingAlert, command }
+  n8nSecret          String?
+
+  // Call & alert rules
+  personalPhone      String   @default("")
+  callLeadMinutes    Int      @default(10)
+  callWindowMinutes  Int      @default(5)   // alert when start is within [lead, lead + window]
+  autoCallMeetings   Boolean  @default(true)
+  quietHoursEnabled  Boolean  @default(false)
+  quietStart         String   @default("22:00")
+  quietEnd           String   @default("07:00")
+  quietAllowUrgent   Boolean  @default(true)
+  urgentThreshold    Int      @default(9)
+  urgentAlertChannel String   @default("whatsapp") // none | call | whatsapp | both
+  emailScanMaxResults Int     @default(20)
+
+  // Voice UI preferences (browser TTS)
+  voiceName          String   @default("")
+  voiceRate          Float    @default(1.0)
+  voicePitch         Float    @default(0.9)
+  voiceLang          String   @default("en-GB")
+  speakResponses     Boolean  @default(true)
+
+  // Email triage rules
+  emailRules         String   @default("")
+  vipSenders         String   @default("") // comma/newline separated emails or domains
+  importantKeywords  String   @default("urgent, invoice, contract, interview, deadline, payment")
+  ignoreKeywords     String   @default("newsletter, unsubscribe, promotion, sale, webinar")
+
+  updatedAt          DateTime @updatedAt
+  createdAt          DateTime @default(now())
+}
+
+model Contact {
+  id        String   @id @default(cuid())
+  name      String
+  nicknames String   @default("") // comma separated: "mom, mother, mum"
+  phone     String   // E.164, e.g. +14155550123
+  email     String?
+  notes     String?
+  isVip     Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  messages  WhatsAppMessage[]
+
+  @@index([name])
+}
+
+model EmailLog {
+  id          String   @id @default(cuid())
+  gmailId     String   @unique
+  threadId    String?
+  fromName    String   @default("")
+  fromEmail   String   @default("")
+  subject     String   @default("")
+  snippet     String   @default("")
+  summary     String   @default("")
+  score       Int      @default(0)        // 1-10
+  category    String   @default("IGNORE") // IMPORTANT | GOOD | IGNORE
+  reason      String   @default("")
+  receivedAt  DateTime
+  alerted     Boolean  @default(false)
+  dismissed   Boolean  @default(false)
+  isMock      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([category, receivedAt])
+}
+
+model MeetingReminder {
+  id            String    @id @default(cuid())
+  eventId       String
+  title         String
+  startTime     DateTime
+  endTime       DateTime?
+  location      String?
+  meetLink      String?
+  autoCall      Boolean   @default(true)
+  callTriggered Boolean   @default(false)
+  triggeredAt   DateTime?
+  callRef       String?
+  isMock        Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // A recurring event re-uses its id per instance, so key on (id, start).
+  @@unique([eventId, startTime])
+  @@index([startTime])
+}
+
+model WhatsAppMessage {
+  id         String   @id @default(cuid())
+  direction  String   // OUTBOUND | INBOUND
+  phone      String
+  body       String
+  status     String   @default("PENDING") // PENDING | SENT | DELIVERED | READ | RECEIVED | FAILED | MOCK
+  providerId String?
+  error      String?
+  contactId  String?
+  contact    Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+model ActionLog {
+  id        String   @id @default(cuid())
+  type      String   // COMMAND | WHATSAPP_SENT | WHATSAPP_RECEIVED | CALL_PLACED | EMAIL_SCAN | CALENDAR_CHECK | CONFIG | AUTH | ERROR
+  status    String   // SUCCESS | FAILED | MOCK | SKIPPED
+  channel   String   @default("native") // native | n8n | mock
+  summary   String
+  detail    String?  // JSON
+  error     String?
+  createdAt DateTime @default(now())
+
+  @@index([type, createdAt])
+  @@index([createdAt])
+}
