@@ -20,7 +20,7 @@ function LoginForm() {
       window.location.href = next && next.startsWith("/") && !next.startsWith("//") ? next : "/";
       return;
     }
-    const d = await res.json().catch(() => ({}));
+    const d = (await res.json().catch(() => ({}))) as { error?: string };
     setError(d.error ?? "Access denied.");
     setPassword("");
     setLoading(false);

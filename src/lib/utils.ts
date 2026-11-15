@@ -10,13 +10,12 @@ export function normalizePhone(p: string): string {
 }
 
 /**
- * Public base URL of the app (no trailing slash). APP_URL wins; on Vercel it
- * falls back to the production domain Vercel provides automatically.
+ * Public base URL of the app (no trailing slash). APP_URL wins (set it for a
+ * custom domain); otherwise the origin of the current request is used.
  */
-export function appUrl(): string {
+export function appUrl(req?: Request): string {
   const explicit = process.env.APP_URL;
   if (explicit) return explicit.replace(/\/$/, "");
-  const vercel = process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL;
-  if (vercel) return `https://${vercel}`;
+  if (req) return new URL(req.url).origin;
   return "http://localhost:3000";
 }

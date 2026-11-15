@@ -7,7 +7,8 @@ messaging, outbound phone calls, AI email triage and meeting call reminders.
 
 ```bash
 npm install && cp .env.example .env   # then fill JARVIS_PASSWORD / AUTH_SECRET / CRON_SECRET
-npm run setup && npm run dev
+npm run setup && npm run dev        # local D1 + dev server
+npm run deploy                       # Cloudflare Workers + D1 (see SETUP.md §5)
 ```
 
 ## Architecture
@@ -38,7 +39,7 @@ Service layer (src/lib/services) ─ every integration has a mock fallback
   contacts.ts      fuzzy name/nickname resolution
   logger.ts        ActionLog audit trail
         │
-Prisma ─ PostgreSQL (Supabase); SQLite optional for offline dev
+Prisma + @prisma/adapter-d1 ─ Cloudflare D1 (SQLite) · Cron Triggers in custom-worker.ts
   UserConfig (encrypted secrets) · Contact · EmailLog · MeetingReminder · WhatsAppMessage · ActionLog
 ```
 
@@ -47,10 +48,10 @@ Prisma ─ PostgreSQL (Supabase); SQLite optional for offline dev
 | Command                   | Purpose                                         |
 | ------------------------- | ----------------------------------------------- |
 | `npm run dev`             | Dev server on :3000                             |
-| `npm run setup`           | Create/patch DB schema + seed sample contacts   |
+| `npm run setup`           | Create local D1 tables + sample contacts        |
 | `npm run cron:local`      | Local scheduler hitting the cron endpoints      |
-| `npm run db:use-sqlite`   | Optional offline SQLite DB for local dev        |
-| `npm run db:studio`       | Browse the database                             |
-| `npm run build && npm start` | Production build / server                    |
+| `npm run preview`         | Run the Cloudflare build locally (workerd)      |
+| `npm run deploy`          | Build + deploy to Cloudflare + apply migrations |
+| `npm run db:migrate:remote` | Apply D1 migrations to production             |
 | `npm run typecheck`       | TypeScript check                                |
 | `npm run icons`           | Regenerate PNG icons from `public/icons/icon.svg` (needs Playwright) |

@@ -1,18 +1,19 @@
 // J.A.R.V.I.S. data model
 // ---------------------------------------------------------------------------
-// PostgreSQL (Supabase). Kept portable to SQLite too:
+// Cloudflare D1 (SQLite). Kept portable to PostgreSQL too:
 //  * no native enums (string columns + TypeScript unions in src/lib/types.ts)
 //  * no Json columns (JSON stored as TEXT and parsed in the service layer)
-// For an offline SQLite dev DB: set provider = "sqlite", drop directUrl.
+// Schema changes: edit this file, then generate a new D1 migration (see SETUP.md).
 
 generator client {
   provider = "prisma-client-js"
 }
 
+// Production runs on Cloudflare D1 (SQLite) through @prisma/adapter-d1.
+// DATABASE_URL is only used by Prisma CLI tooling (migrate diff, studio).
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL") // pooled connection (Supabase port 6543, ?pgbouncer=true)
-  directUrl = env("DIRECT_URL") // direct/session connection (port 5432) for prisma db push
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
 }
 
 /// Single-row configuration (id = "singleton"). Every secret column holds

@@ -1,5 +1,5 @@
 /**
- * Local scheduler for development / self-hosting without Vercel Cron.
+ * Local scheduler for development / self-hosting without Cloudflare Cron Triggers.
  *   npm run cron:local
  * Reads APP_URL and CRON_SECRET from .env.
  */

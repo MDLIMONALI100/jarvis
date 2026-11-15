@@ -10,3 +10,6 @@ next-env.d.ts
 *.tsbuildinfo
 .vercel
 tsconfig.tsbuildinfo
+.open-next
+.wrangler
+.dev.vars

@@ -23,7 +23,6 @@ Edit `.env` and set the required values:
 
 | Variable          | What it is                                                                                     |
 | ----------------- | ---------------------------------------------------------------------------------------------- |
-| `DATABASE_URL` / `DIRECT_URL` | Supabase Postgres connection strings (see section 5). For an offline SQLite file instead, run `npm run db:use-sqlite`. |
 | `JARVIS_PASSWORD` | Your password/PIN for the HUD and admin panel (min. 4 characters).                             |
 | `AUTH_SECRET`     | 32+ random characters. Signs your login cookie **and** encrypts API keys stored in the DB.     |
 | `CRON_SECRET`     | Random token that protects `/api/cron/*` and the automation endpoints.                         |
@@ -37,7 +36,7 @@ openssl rand -base64 48
 > ⚠️ If you change `AUTH_SECRET` later, stored API keys can no longer be decrypted.
 > Re-enter them in /admin.
 
-Create the tables and seed sample contacts (skip this if the tables already exist in Supabase):
+Create the local D1 database (an SQLite file under `.wrangler/`) and add sample contacts:
 
 ```bash
 npm run setup
@@ -55,6 +54,12 @@ Try: *"Which emails are important today?"*, *"Send a WhatsApp to Mom saying I'll
 *"Remind me about my next meeting"*, *"Give me my daily briefing"*.
 
 Voice input needs Chrome, Edge or Safari, and a secure origin (`localhost` or HTTPS).
+
+To test the exact Cloudflare build locally, copy the three secrets into a `.dev.vars` file and run:
+
+```bash
+npm run preview
+```
 
 ---
 
@@ -122,7 +127,7 @@ format (`+447700900123`), save, and press **Test outbound call**.
    sandbox from each phone (send the `join <code>` text).
 2. Sender = `+14155238886` (sandbox) or your approved number.
 3. Set *When a message comes in* to `https://YOUR_DOMAIN/api/whatsapp/webhook`.
-   Signatures are verified with your auth token, so `APP_URL` must match the public URL exactly.
+   Signatures are verified with your auth token, so the URL must match your live domain exactly.
 
 Add people in **Admin → Contacts** with nicknames (e.g. `Mom` → `mother, mum`)
 so voice commands resolve correctly. Mark key people as **VIP** to boost their emails.
@@ -180,11 +185,11 @@ atomically before dialing. If a call fails outright, the claim is released so th
 next run retries. Quiet hours suppress meeting calls; urgent email alerts are
 allowed through unless you turn that off.
 
-**Free option (recommended with Vercel's free plan): https://cron-job.org**
-Vercel's free plan only allows cron jobs once a day, so use a free external scheduler instead:
-1. Sign up at cron-job.org and click **Create cronjob**.
-2. URL: `https://YOUR_DOMAIN/api/cron/meetings?key=YOUR_CRON_SECRET`, schedule: every 5 minutes.
-3. Create a second job for `https://YOUR_DOMAIN/api/cron/emails?key=YOUR_CRON_SECRET`, every 15 minutes.
+**On Cloudflare this is already done.** `wrangler.jsonc` defines two free Cron Triggers
+(`*/5` and `*/15`), and `custom-worker.ts` calls the routes above with your `CRON_SECRET`.
+You can watch them run under Worker → **Logs**. Nothing else needs to be set up.
+
+If you host somewhere else, use one of these options:
 
 **Any Linux server** (crontab -e):
 
@@ -193,7 +198,8 @@ Vercel's free plan only allows cron jobs once a day, so use a free external sche
 */15 * * * * curl -fsS -H "Authorization: Bearer YOUR_CRON_SECRET" https://YOUR_DOMAIN/api/cron/emails   >/dev/null
 ```
 
-**External scheduler** (cron-job.org, GitHub Actions, n8n Schedule node): GET the URLs above with the header.
+**External scheduler** (cron-job.org, GitHub Actions, n8n Schedule node): GET
+`https://YOUR_DOMAIN/api/cron/meetings?key=YOUR_CRON_SECRET` every 5 minutes, and the same for `/api/cron/emails` every 15 minutes.
 
 **Local development**: run this next to `npm run dev`:
 
@@ -218,43 +224,59 @@ time you tap the orb. On iOS, voice recognition requires iOS 14.5+ Safari.
 
 ---
 
-## 5. Deploy to production (Vercel + Supabase, both free)
+## 5. Deploy to Cloudflare (free)
 
-### Database (Supabase)
+The app runs as a **Cloudflare Worker** (Next.js via OpenNext), the database is **Cloudflare D1**,
+and background jobs use **Cron Triggers**. All three are on Cloudflare's free plan.
 
-The `jarvis` Supabase project (region `ap-south-1`) already has every table created,
-with row-level security on, so Supabase's public API can't read them. The app
-connects as the database owner.
+### Option A: from the Cloudflare dashboard (no terminal needed)
 
-1. Supabase dashboard → project **jarvis** → **Project Settings → Database → Reset database password**.
-   Pick a strong password and save it somewhere safe.
-2. Click **Connect** (top bar) → **ORMs → Prisma**. Copy the two strings and put your password in both:
-   - `DATABASE_URL`: the pooled one, port **6543**. Make sure it ends with `?pgbouncer=true&connection_limit=1`.
-   - `DIRECT_URL`: the session one, port **5432**.
+1. Go to https://dash.cloudflare.com, sign up or log in, then open **Workers & Pages → Create → Import a repository**.
+   Connect GitHub and pick `jarvis`.
+2. Configure the project:
+   - **Project name:** `jarvis` (must match `name` in `wrangler.jsonc`)
+   - **Build command:** `npx opennextjs-cloudflare build`
+   - **Deploy command:** `npx opennextjs-cloudflare deploy && npx wrangler d1 migrations apply jarvis-db --remote`
+3. Click **Deploy**. The first deploy automatically creates the D1 database `jarvis-db`, then creates the tables.
+4. Open the Worker's **Settings → Variables and Secrets** and add three values, each with type **Secret**:
+   `JARVIS_PASSWORD`, `AUTH_SECRET`, `CRON_SECRET` (random strings: 40+ characters for
+   `AUTH_SECRET`, 30+ for `CRON_SECRET`). Saving them redeploys the Worker.
+5. Open `https://jarvis.<your-subdomain>.workers.dev`, log in, and you're live.
 
-Schema changes later on: edit `prisma/schema.prisma`, then run `npx prisma db push`.
-It uses `DIRECT_URL`.
+Every push to `main` redeploys automatically.
 
-### App (Vercel)
+### Option B: from your computer (CLI)
 
-1. https://vercel.com → sign in with GitHub → **Add New → Project** → import `jarvis`.
-2. Under **Environment Variables**, add:
+```bash
+npx wrangler login
+```
 
-   | Name              | Value                                                   |
-   | ----------------- | ------------------------------------------------------- |
-   | `DATABASE_URL`    | pooled Supabase URL (port 6543)                         |
-   | `DIRECT_URL`      | direct Supabase URL (port 5432)                         |
-   | `JARVIS_PASSWORD` | your login password                                     |
-   | `AUTH_SECRET`     | `openssl rand -base64 48`                               |
-   | `CRON_SECRET`     | `openssl rand -hex 24`                                  |
-   | `APP_URL`         | optional: only needed for a custom domain (defaults to your `.vercel.app` URL) |
+```bash
+npx wrangler secret put JARVIS_PASSWORD
+```
 
-3. **Deploy**. If you later add a custom domain, set `APP_URL` to it and redeploy.
-4. Optional, for lower latency: **Settings → Functions → Region** → Mumbai (`bom1`), next to the database.
-5. Update the Google redirect URI and the WhatsApp webhook URL to the Vercel domain.
-6. Configure cron (section 3), then install the PWA (section 4).
+Repeat the last command for `AUTH_SECRET` and `CRON_SECRET`, then deploy:
 
-Self-hosting on any Node server works too: set the same variables, then run `npm run build && npm start`.
+```bash
+npm run deploy
+```
+
+### After the first deploy
+
+- **Custom domain (optional):** Worker → **Settings → Domains & Routes**. Then add an
+  `APP_URL` secret with that URL. Without it, the app uses whatever address the request came in on.
+- Set the Google redirect URI and the WhatsApp webhook URL to your live domain (section 2).
+- Install the PWA on your phone (section 4).
+
+### Schema changes later
+
+Edit `prisma/schema.prisma`, then generate a migration file with the next number:
+
+```bash
+npx prisma migrate diff --from-local-d1 --to-schema-datamodel prisma/schema.prisma --script > migrations/0002_change.sql
+```
+
+Push to GitHub; the deploy command applies new migrations. To apply one by hand, run `npm run db:migrate:remote`.
 
 ### Security notes
 
@@ -273,10 +295,12 @@ Self-hosting on any Node server works too: set the same variables, then run `npm
 
 | Symptom                               | Fix                                                                                     |
 | ------------------------------------- | --------------------------------------------------------------------------------------- |
-| "AUTH_SECRET must be set"             | Add a 32+ character `AUTH_SECRET` to `.env` and restart.                                |
+| "AUTH_SECRET must be set"             | Add a 32+ character `AUTH_SECRET` secret (Cloudflare) or to `.env` (local).             |
+| "no such table" errors after deploy   | The migration step didn't run. Run `npm run db:migrate:remote`, or open the D1 database → **Console** in the dashboard and paste the contents of `migrations/0001_init.sql`. |
+| Login says JARVIS_PASSWORD not configured | Add the `JARVIS_PASSWORD` secret under Worker → Settings → Variables and Secrets. |
 | Orb does nothing / "not supported"    | Use Chrome, Edge or Safari over HTTPS or localhost; allow microphone access.            |
 | Stored keys suddenly show as "Not set" | `AUTH_SECRET` changed. Re-enter the keys.                                               |
-| Google "redirect_uri_mismatch"        | `APP_URL` must match the redirect URI in Google Console exactly.                        |
+| Google "redirect_uri_mismatch"        | The redirect URI in Google Console must exactly match the one shown in admin (your live domain). |
 | WhatsApp sends "fail" with error 131047 | The recipient's 24h window is closed (Meta). Use a template or message from the phone first. |
-| Twilio WhatsApp webhook returns 403   | `APP_URL` doesn't match the URL Twilio calls (signature check).                          |
+| Twilio WhatsApp webhook returns 403   | The URL Twilio calls must match your live domain exactly (signature check). Set `APP_URL` if you're behind a proxy. |
 | No meeting calls                      | Check Admin → Logs → CALENDAR_CHECK entries, confirm cron is running, phone is set, quiet hours are off. |

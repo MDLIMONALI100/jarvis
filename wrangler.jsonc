@@ -1,0 +1,30 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "jarvis",
+  // Custom entry: OpenNext's fetch handler + a `scheduled` handler for cron.
+  "main": "custom-worker.ts",
+  "compatibility_date": "2026-11-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "observability": { "enabled": true },
+
+  // Cloudflare D1 (SQLite). No database_id needed: Wrangler creates
+  // "jarvis-db" automatically on the first deploy and reuses it afterwards.
+  // (To pin an existing database, add "database_id": "<id>".)
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "jarvis-db",
+      "migrations_dir": "migrations"
+    }
+  ],
+
+  // Free Cron Triggers (replaces Vercel cron / cron-job.org).
+  // Meeting reminders every 5 min, inbox triage every 15 min.
+  "triggers": {
+    "crons": ["*/5 * * * *", "*/15 * * * *"]
+  }
+}

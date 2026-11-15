@@ -3,7 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
-  serverExternalPackages: ["@prisma/client"],
+  serverExternalPackages: ["@prisma/client", ".prisma/client"],
   async headers() {
     return [
       {
@@ -28,3 +28,7 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
+
+// Gives `next dev` access to Cloudflare bindings (local D1) via wrangler.jsonc.
+import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
+initOpenNextCloudflareForDev();

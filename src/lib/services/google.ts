@@ -1,7 +1,6 @@
 import "server-only";
 import { prisma } from "../db";
 import { encrypt } from "../crypto";
-import { appUrl } from "../utils";
 import type { ResolvedConfig } from "../config";
 import type { CalendarEvent, RawEmail } from "../types";
 
@@ -12,16 +11,16 @@ export const GOOGLE_SCOPES = [
   "https://www.googleapis.com/auth/calendar.readonly",
 ];
 
-export const googleRedirectUri = () => `${appUrl()}/api/google/callback`;
+export const googleRedirectUri = (base: string) => `${base}/api/google/callback`;
 
 export function googleLive(cfg: ResolvedConfig) {
   return Boolean(cfg.googleClientId && cfg.googleClientSecret && cfg.googleRefreshToken);
 }
 
-export function googleAuthUrl(cfg: ResolvedConfig, state: string) {
+export function googleAuthUrl(cfg: ResolvedConfig, state: string, base: string) {
   const p = new URLSearchParams({
     client_id: cfg.googleClientId!,
-    redirect_uri: googleRedirectUri(),
+    redirect_uri: googleRedirectUri(base),
     response_type: "code",
     scope: GOOGLE_SCOPES.join(" "),
     access_type: "offline",
@@ -32,7 +31,7 @@ export function googleAuthUrl(cfg: ResolvedConfig, state: string) {
   return `https://accounts.google.com/o/oauth2/v2/auth?${p}`;
 }
 
-export async function exchangeGoogleCode(cfg: ResolvedConfig, code: string) {
+export async function exchangeGoogleCode(cfg: ResolvedConfig, code: string, base: string) {
   const res = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -40,7 +39,7 @@ export async function exchangeGoogleCode(cfg: ResolvedConfig, code: string) {
       code,
       client_id: cfg.googleClientId!,
       client_secret: cfg.googleClientSecret,
-      redirect_uri: googleRedirectUri(),
+      redirect_uri: googleRedirectUri(base),
       grant_type: "authorization_code",
     }),
   });

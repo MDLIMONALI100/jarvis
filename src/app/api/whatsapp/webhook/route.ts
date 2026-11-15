@@ -39,7 +39,7 @@ export async function POST(req: Request) {
     // Twilio
     const params = new URLSearchParams(raw);
     if (cfg.twilioAuthToken) {
-      const url = `${appUrl()}/api/whatsapp/webhook`;
+      const url = `${appUrl(req)}/api/whatsapp/webhook`;
       const data = [...params.keys()].sort().reduce((acc, k) => acc + k + params.get(k), url);
       const expected = createHmac("sha1", cfg.twilioAuthToken).update(data).digest("base64");
       const got = req.headers.get("x-twilio-signature") ?? "";

@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { getConfig, integrationStatus } from "@/lib/config";
 import { handler, json } from "@/lib/http";
 
-export const GET = handler("admin/status", async () => {
+export const GET = handler("admin/status", async (req: Request) => {
   const cfg = await getConfig();
   const since = new Date(Date.now() - 86_400_000);
   const [calls, messages, scans, errors, contacts] = await Promise.all([
@@ -18,6 +18,6 @@ export const GET = handler("admin/status", async () => {
     stats24h: { calls, messages, scans, errors },
     contacts,
     cronConfigured: Boolean(process.env.CRON_SECRET),
-    appUrl: appUrl(),
+    appUrl: appUrl(req),
   });
 });

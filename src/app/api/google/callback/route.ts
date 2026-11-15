@@ -6,7 +6,7 @@ import { logAction } from "@/lib/services/logger";
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
-  const base = appUrl();
+  const base = appUrl(req);
   const jar = await cookies();
   const state = jar.get("jarvis_oauth_state")?.value;
   jar.delete("jarvis_oauth_state");
@@ -15,7 +15,7 @@ export async function GET(req: Request) {
     return Response.redirect(new URL("/admin?tab=integrations&google=invalid-state", base));
   }
   try {
-    const { email } = await exchangeGoogleCode(await getConfig(), code);
+    const { email } = await exchangeGoogleCode(await getConfig(), code, base);
     await logAction({ type: "CONFIG", status: "SUCCESS", summary: `Google account connected${email ? `: ${email}` : ""}` });
     return Response.redirect(new URL("/admin?tab=integrations&google=connected", base));
   } catch (e) {
