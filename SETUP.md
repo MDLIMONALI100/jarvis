@@ -218,6 +218,14 @@ and set `APP_URL` to that URL).
 - **iPhone (Safari):** open the site → Share button → **Add to Home Screen**.
 - **Android (Chrome):** open the site → ⋮ menu → **Install app** (or *Add to Home screen*).
 
+### Turn on alerts (free push notifications)
+
+After installing, open J.A.R.V.I.S. from the home screen and tap the **bell** in the top bar,
+or go to **Admin → Calls & Alerts → Enable on this device**, then **Send test notification**.
+Meeting reminders and urgent-email alerts then arrive as notifications, at no cost and with no limit.
+iPhone needs iOS 16.4+ and the app opened from the home screen; Android works in Chrome.
+Phone calls (Vapi/Twilio) are optional and only used if you configure a voice provider.
+
 It launches full-screen with its own icon. Long-press the icon on Android for the
 *Daily Briefing* and *Call Me Now* shortcuts. Grant microphone permission the first
 time you tap the orb. On iOS, voice recognition requires iOS 14.5+ Safari.
