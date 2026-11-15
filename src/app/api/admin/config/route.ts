@@ -64,6 +64,8 @@ const Patch = z
     voicePitch: z.number().min(0).max(2),
     voiceLang: z.string().max(20),
     speakResponses: z.boolean(),
+    pushMeetings: z.boolean(),
+    pushUrgentEmails: z.boolean(),
     emailRules: z.string().max(8000),
     vipSenders: z.string().max(8000),
     importantKeywords: z.string().max(4000),

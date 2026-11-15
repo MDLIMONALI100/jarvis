@@ -9,6 +9,7 @@ import { placeCall } from "./voice";
 import { sendWhatsApp } from "./whatsapp";
 import { forwardToN8n, n8nTarget } from "./n8n";
 import { isQuietHours } from "../time";
+import { sendPush } from "./push";
 
 export interface EmailScore {
   score: number;
@@ -164,10 +165,17 @@ export async function syncEmails(cfg: ResolvedConfig, opts: { alert?: boolean } 
   // Urgent alerts
   const alerts: string[] = [];
   const quiet = isQuietHours(cfg);
-  if (alert && cfg.urgentAlertChannel !== "none" && (!quiet || cfg.quietAllowUrgent)) {
-    const urgent = saved.filter((e) => e.score >= cfg.urgentThreshold && !e.alerted);
+  if (alert && (cfg.urgentAlertChannel !== "none" || cfg.pushUrgentEmails) && (!quiet || cfg.quietAllowUrgent)) {
+    const urgent = saved.filter((e) => e.score >= cfg.urgentThreshold && !e.alerted && !e.isMock);
     for (const e of urgent) {
       const text = `${cfg.ownerName}, urgent email from ${e.fromName}: ${e.subject}. ${e.summary}`;
+      if (cfg.pushUrgentEmails) {
+        await sendPush(
+          cfg,
+          { title: `🚨 ${e.fromName}: ${e.subject}`.slice(0, 120), body: e.summary, url: "/", tag: `email-${e.id}`, urgent: true },
+          "urgent-email",
+        ).catch(() => {});
+      }
       if (n8nTarget(cfg, "emailTriage")) await forwardToN8n(cfg, "emailTriage", { email: e, message: text });
       if ((cfg.urgentAlertChannel === "whatsapp" || cfg.urgentAlertChannel === "both") && cfg.personalPhone) {
         await sendWhatsApp(cfg, cfg.personalPhone, `🚨 ${text}`, { reason: "urgent-email" });

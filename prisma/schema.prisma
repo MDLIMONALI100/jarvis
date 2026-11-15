@@ -78,6 +78,13 @@ model UserConfig {
   urgentAlertChannel  String  @default("whatsapp") // none | call | whatsapp | both
   emailScanMaxResults Int     @default(20)
 
+  // Push notifications (Web Push / VAPID). Keys are generated on first use;
+  // the private key is stored encrypted.
+  vapidPublicKey   String?
+  vapidPrivateKey  String?
+  pushMeetings     Boolean @default(true)
+  pushUrgentEmails Boolean @default(true)
+
   // Voice UI preferences (browser TTS)
   voiceName      String  @default("")
   voiceRate      Float   @default(1.0)
@@ -181,4 +188,16 @@ model ActionLog {
 
   @@index([type, createdAt])
   @@index([createdAt])
+}
+
+/// A browser/phone that agreed to receive push notifications.
+model PushSubscription {
+  id            String    @id @default(cuid())
+  endpoint      String    @unique
+  p256dh        String
+  auth          String
+  label         String    @default("")
+  failures      Int       @default(0)
+  lastSuccessAt DateTime?
+  createdAt     DateTime  @default(now())
 }

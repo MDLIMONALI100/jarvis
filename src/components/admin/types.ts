@@ -25,6 +25,8 @@ export type Cfg = Record<string, unknown> & {
   voicePitch: number;
   voiceLang: string;
   speakResponses: boolean;
+  pushMeetings: boolean;
+  pushUrgentEmails: boolean;
   emailRules: string;
   vipSenders: string;
   importantKeywords: string;

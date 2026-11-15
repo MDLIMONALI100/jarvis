@@ -11,6 +11,7 @@ export type ActionType =
   | "CALENDAR_CHECK"
   | "CONFIG"
   | "AUTH"
+  | "PUSH_SENT"
   | "ERROR";
 export type ActionStatus = "SUCCESS" | "FAILED" | "MOCK" | "SKIPPED";
 export type Channel = "native" | "n8n" | "mock";

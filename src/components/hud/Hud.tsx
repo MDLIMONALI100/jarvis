@@ -11,6 +11,7 @@ import { Panel } from "./Panel";
 import { PriorityInbox } from "./PriorityInbox";
 import { QuickActions } from "./QuickActions";
 import { StatusBar } from "./StatusBar";
+import { PushBell } from "@/components/PushBell";
 import { WhatsAppLog } from "./WhatsAppLog";
 import type { ChatEntry, Dashboard } from "./types";
 
@@ -143,6 +144,7 @@ export function Hud() {
         </div>
         <div className="flex items-center gap-2">
           <span className="hidden font-mono text-sm tabular-nums text-cyan-200/80 sm:block">{clock}</span>
+          <PushBell onMessage={(t) => setEntries((e) => [...e.slice(-40), { id: uid(), role: "jarvis", text: t }])} />
           <button className="hud-btn h-9 w-9 p-0" onClick={toggleMute} aria-label={muted ? "Unmute voice" : "Mute voice"}>
             {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
           </button>

@@ -75,7 +75,7 @@ export function Meetings({ meetings, timezone, leadMinutes }: { meetings: Meetin
                       <span className={cn("absolute top-0.5 h-3.5 w-3.5 rounded-full transition-all", auto ? "left-[18px] bg-cyan-200" : "left-0.5 bg-slate-400")} />
                     </span>
                     <PhoneCall className="h-3 w-3" />
-                    {m.callTriggered ? "Call placed" : `Auto-call ${leadMinutes}m before`}
+                    {m.callTriggered ? "Reminder sent" : `Remind ${leadMinutes}m before`}
                   </label>
                   {m.meetLink && (
                     <a href={m.meetLink} target="_blank" rel="noreferrer" className="hud-btn px-2 py-1 text-[11px]">

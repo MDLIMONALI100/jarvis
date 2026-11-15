@@ -5,6 +5,8 @@ import { fetchEvents, googleLive } from "./google";
 import { placeCall } from "./voice";
 import { logAction } from "./logger";
 import { forwardToN8n, n8nTarget } from "./n8n";
+import { sendPush } from "./push";
+import { integrationStatus } from "../config";
 import { formatTime, isQuietHours, startOfDayInZone } from "../time";
 
 /** Upsert calendar events into MeetingReminder so auto-call toggles persist. */
@@ -83,13 +85,32 @@ export async function checkMeetings(cfg: ResolvedConfig) {
       results.push({ id: r.id, title: r.title, ok: res.ok, channel: "n8n" });
       continue;
     }
-    const call = await placeCall(cfg, message, { reason: `meeting:${r.eventId}` });
-    // If the call failed outright, release the claim so the next run retries.
+    // Push notification (free) and/or a real phone call when a voice provider is live.
+    let pushed = 0;
+    if (cfg.pushMeetings) {
+      const p = await sendPush(
+        cfg,
+        {
+          title: `📅 ${r.title} in ${mins} min`,
+          body: `${formatTime(r.startTime, cfg.timezone)}${r.location ? ` · ${r.location}` : ""}${r.meetLink ? " · tap to join" : ""}`,
+          url: r.meetLink || "/",
+          tag: `meeting-${r.id}`,
+          urgent: true,
+        },
+        `meeting:${r.eventId}`,
+      ).catch(() => ({ sent: 0 }));
+      pushed = p.sent;
+    }
+    const callLive = integrationStatus(cfg).voice || Boolean(n8nTarget(cfg, "call"));
+    let call: { ok: boolean; ref?: string; channel: string; error?: string } | null = null;
+    if (callLive || pushed === 0) call = await placeCall(cfg, message, { reason: `meeting:${r.eventId}` });
+    const ok = pushed > 0 || Boolean(call?.ok);
+    // If nothing reached you, release the claim so the next run retries.
     await prisma.meetingReminder.update({
       where: { id: r.id },
-      data: call.ok ? { callRef: call.ref ?? null } : { callTriggered: false, triggeredAt: null },
+      data: ok ? { callRef: call?.ref ?? (pushed ? "push" : null) } : { callTriggered: false, triggeredAt: null },
     });
-    results.push({ id: r.id, title: r.title, ok: call.ok, channel: call.channel, error: call.error });
+    results.push({ id: r.id, title: r.title, ok, pushed, call: call ? { ok: call.ok, channel: call.channel, error: call.error } : null });
   }
 
   await logAction({

@@ -19,6 +19,9 @@ export const SECRET_FIELDS = [
   "googleRefreshToken",
   "n8nSecret",
 ] as const;
+
+/** Never sent to the browser at all (not even masked). */
+export const HIDDEN_FIELDS = ["vapidPrivateKey"] as const;
 export type SecretField = (typeof SECRET_FIELDS)[number];
 
 /** Env fallbacks so keys can live in .env instead of the DB if preferred. */
@@ -65,6 +68,7 @@ export async function getConfig(): Promise<ResolvedConfig> {
 export async function getPublicConfig() {
   const cfg = await getConfig();
   const pub: Record<string, unknown> = { ...cfg };
+  for (const f of HIDDEN_FIELDS) delete pub[f];
   const secretsSet: Record<string, boolean> = {};
   for (const f of SECRET_FIELDS) {
     const v = cfg[f] as string;
@@ -81,7 +85,7 @@ export async function getPublicConfig() {
 export async function updateConfig(patch: Record<string, unknown>) {
   const data: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(patch)) {
-    if (k === "id" || k === "createdAt" || k === "updatedAt") continue;
+    if (k === "id" || k === "createdAt" || k === "updatedAt" || k === "vapidPublicKey" || k === "vapidPrivateKey") continue;
     if ((SECRET_FIELDS as readonly string[]).includes(k)) {
       if (v === null) data[k] = null;
       else if (typeof v === "string" && v.trim() !== "" && !v.includes("•")) data[k] = encrypt(v.trim());

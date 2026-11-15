@@ -3,12 +3,15 @@ import { CheckCircle2, Loader2, XCircle, type LucideIcon } from "lucide-react";
 import { useState } from "react";
 import { api } from "@/lib/client";
 
-export function TestButton({ type, label, icon: Icon, to, disabled }: { type: "call" | "whatsapp" | "llm" | "google" | "n8n"; label: string; icon: LucideIcon; to?: string; disabled?: boolean }) {
+export function TestButton({ type, label, icon: Icon, to, disabled }: { type: "call" | "whatsapp" | "llm" | "google" | "n8n" | "push"; label: string; icon: LucideIcon; to?: string; disabled?: boolean }) {
   const [state, setState] = useState<{ loading: boolean; ok?: boolean; msg?: string }>({ loading: false });
   const run = async () => {
     setState({ loading: true });
     try {
-      const r = await api<{ ok: boolean; message: string }>("/api/admin/test", { method: "POST", json: { type, to: to || undefined } });
+      const r =
+        type === "push"
+          ? await api<{ ok: boolean; message: string }>("/api/push/test", { method: "POST", json: {} })
+          : await api<{ ok: boolean; message: string }>("/api/admin/test", { method: "POST", json: { type, to: to || undefined } });
       setState({ loading: false, ok: r.ok, msg: r.message });
     } catch (e) {
       setState({ loading: false, ok: false, msg: e instanceof Error ? e.message : String(e) });
