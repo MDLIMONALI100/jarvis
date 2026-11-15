@@ -180,9 +180,11 @@ atomically before dialing. If a call fails outright, the claim is released so th
 next run retries. Quiet hours suppress meeting calls; urgent email alerts are
 allowed through unless you turn that off.
 
-**Vercel**: `vercel.json` already defines both crons. Add `CRON_SECRET` to the
-project's environment variables and Vercel sends it automatically.
-(The Hobby plan only runs crons once a day; use Pro or an external scheduler for 5-minute checks.)
+**Free option (recommended with Vercel's free plan): https://cron-job.org**
+Vercel's free plan only allows cron jobs once a day, so use a free external scheduler instead:
+1. Sign up at cron-job.org and click **Create cronjob**.
+2. URL: `https://YOUR_DOMAIN/api/cron/meetings?key=YOUR_CRON_SECRET`, schedule: every 5 minutes.
+3. Create a second job for `https://YOUR_DOMAIN/api/cron/emails?key=YOUR_CRON_SECRET`, every 15 minutes.
 
 **Any Linux server** (crontab -e):
 
@@ -245,9 +247,9 @@ It uses `DIRECT_URL`.
    | `JARVIS_PASSWORD` | your login password                                     |
    | `AUTH_SECRET`     | `openssl rand -base64 48`                               |
    | `CRON_SECRET`     | `openssl rand -hex 24`                                  |
-   | `APP_URL`         | `https://<your-project>.vercel.app` (no trailing slash) |
+   | `APP_URL`         | optional: only needed for a custom domain (defaults to your `.vercel.app` URL) |
 
-3. **Deploy**. After the first deploy, check that `APP_URL` matches the real domain; if it doesn't, fix it and redeploy.
+3. **Deploy**. If you later add a custom domain, set `APP_URL` to it and redeploy.
 4. Optional, for lower latency: **Settings → Functions → Region** → Mumbai (`bom1`), next to the database.
 5. Update the Google redirect URI and the WhatsApp webhook URL to the Vercel domain.
 6. Configure cron (section 3), then install the PWA (section 4).

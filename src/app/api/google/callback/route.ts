@@ -1,3 +1,4 @@
+import { appUrl } from "@/lib/utils";
 import { cookies } from "next/headers";
 import { getConfig } from "@/lib/config";
 import { exchangeGoogleCode } from "@/lib/services/google";
@@ -5,7 +6,7 @@ import { logAction } from "@/lib/services/logger";
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
-  const base = process.env.APP_URL || url.origin;
+  const base = appUrl();
   const jar = await cookies();
   const state = jar.get("jarvis_oauth_state")?.value;
   jar.delete("jarvis_oauth_state");

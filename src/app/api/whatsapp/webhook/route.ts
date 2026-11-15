@@ -2,7 +2,7 @@ import { createHmac, timingSafeEqual } from "crypto";
 import { prisma } from "@/lib/db";
 import { getConfig } from "@/lib/config";
 import { logAction } from "@/lib/services/logger";
-import { normalizePhone } from "@/lib/utils";
+import { appUrl, normalizePhone } from "@/lib/utils";
 
 /** Meta webhook verification handshake. */
 export async function GET(req: Request) {
@@ -39,7 +39,7 @@ export async function POST(req: Request) {
     // Twilio
     const params = new URLSearchParams(raw);
     if (cfg.twilioAuthToken) {
-      const url = `${(process.env.APP_URL || "").replace(/\/$/, "")}/api/whatsapp/webhook`;
+      const url = `${appUrl()}/api/whatsapp/webhook`;
       const data = [...params.keys()].sort().reduce((acc, k) => acc + k + params.get(k), url);
       const expected = createHmac("sha1", cfg.twilioAuthToken).update(data).digest("base64");
       const got = req.headers.get("x-twilio-signature") ?? "";

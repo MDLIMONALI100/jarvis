@@ -1,3 +1,4 @@
+import { appUrl } from "@/lib/utils";
 import { prisma } from "@/lib/db";
 import { getConfig, integrationStatus } from "@/lib/config";
 import { handler, json } from "@/lib/http";
@@ -17,6 +18,6 @@ export const GET = handler("admin/status", async () => {
     stats24h: { calls, messages, scans, errors },
     contacts,
     cronConfigured: Boolean(process.env.CRON_SECRET),
-    appUrl: process.env.APP_URL || null,
+    appUrl: appUrl(),
   });
 });

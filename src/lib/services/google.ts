@@ -1,6 +1,7 @@
 import "server-only";
 import { prisma } from "../db";
 import { encrypt } from "../crypto";
+import { appUrl } from "../utils";
 import type { ResolvedConfig } from "../config";
 import type { CalendarEvent, RawEmail } from "../types";
 
@@ -11,7 +12,7 @@ export const GOOGLE_SCOPES = [
   "https://www.googleapis.com/auth/calendar.readonly",
 ];
 
-export const googleRedirectUri = () => `${(process.env.APP_URL || "http://localhost:3000").replace(/\/$/, "")}/api/google/callback`;
+export const googleRedirectUri = () => `${appUrl()}/api/google/callback`;
 
 export function googleLive(cfg: ResolvedConfig) {
   return Boolean(cfg.googleClientId && cfg.googleClientSecret && cfg.googleRefreshToken);
