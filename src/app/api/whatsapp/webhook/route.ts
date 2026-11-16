@@ -3,6 +3,8 @@ import { prisma } from "@/lib/db";
 import { getConfig } from "@/lib/config";
 import { logAction } from "@/lib/services/logger";
 import { appUrl, normalizePhone } from "@/lib/utils";
+import { sendPush } from "@/lib/services/push";
+import { whatsappMessage } from "@/lib/services/notifications";
 
 /** Meta webhook verification handshake. */
 export async function GET(req: Request) {
@@ -98,4 +100,6 @@ async function recordInbound(phone: string, body: string, providerId?: string | 
     summary: `WhatsApp from ${contact?.name ?? phone}: "${body.slice(0, 120)}"`,
     detail: { phone, providerId },
   });
+  const cfg = await getConfig();
+  if (cfg.pushWhatsApp) await sendPush(cfg, whatsappMessage(contact?.name ?? phone, body), "whatsapp-inbound").catch(() => {});
 }

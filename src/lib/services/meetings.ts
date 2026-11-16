@@ -6,6 +6,7 @@ import { placeCall } from "./voice";
 import { logAction } from "./logger";
 import { forwardToN8n, n8nTarget } from "./n8n";
 import { sendPush } from "./push";
+import { meetingMessage, meetingStartMessage } from "./notifications";
 import { integrationStatus } from "../config";
 import { formatTime, isQuietHours, startOfDayInZone } from "../time";
 
@@ -54,7 +55,8 @@ export async function checkMeetings(cfg: ResolvedConfig) {
   const now = new Date();
   const lead = Math.max(1, cfg.callLeadMinutes);
   const windowEnd = new Date(now.getTime() + (lead + Math.max(1, cfg.callWindowMinutes)) * 60_000);
-  const rows = await syncReminders(cfg, now, windowEnd);
+  // Look back a few minutes too, so "starting now" alerts catch just-started meetings.
+  const rows = await syncReminders(cfg, new Date(now.getTime() - 5 * 60_000), windowEnd);
 
   const due = rows.filter((r) => {
     const mins = (r.startTime.getTime() - now.getTime()) / 60_000;
@@ -88,17 +90,7 @@ export async function checkMeetings(cfg: ResolvedConfig) {
     // Push notification (free) and/or a real phone call when a voice provider is live.
     let pushed = 0;
     if (cfg.pushMeetings) {
-      const p = await sendPush(
-        cfg,
-        {
-          title: `📅 ${r.title} in ${mins} min`,
-          body: `${formatTime(r.startTime, cfg.timezone)}${r.location ? ` · ${r.location}` : ""}${r.meetLink ? " · tap to join" : ""}`,
-          url: r.meetLink || "/",
-          tag: `meeting-${r.id}`,
-          urgent: true,
-        },
-        `meeting:${r.eventId}`,
-      ).catch(() => ({ sent: 0 }));
+      const p = await sendPush(cfg, meetingMessage(cfg, r, mins), `meeting:${r.eventId}`).catch(() => ({ sent: 0 }));
       pushed = p.sent;
     }
     const callLive = integrationStatus(cfg).voice || Boolean(n8nTarget(cfg, "call"));
@@ -111,6 +103,18 @@ export async function checkMeetings(cfg: ResolvedConfig) {
       data: ok ? { callRef: call?.ref ?? (pushed ? "push" : null) } : { callTriggered: false, triggeredAt: null },
     });
     results.push({ id: r.id, title: r.title, ok, pushed, call: call ? { ok: call.ok, channel: call.channel, error: call.error } : null });
+  }
+
+  // "Starting now" notifications (from 1 min before to 4 min after the start).
+  if (cfg.pushMeetingStart && !quiet) {
+    const starting = rows.filter((r) => {
+      const m = (r.startTime.getTime() - now.getTime()) / 60_000;
+      return r.autoCall && !r.startNotified && m <= 1 && m > -4;
+    });
+    for (const r of starting) {
+      const claim = await prisma.meetingReminder.updateMany({ where: { id: r.id, startNotified: false }, data: { startNotified: true } });
+      if (claim.count) await sendPush(cfg, meetingStartMessage(cfg, r), `meeting-start:${r.eventId}`).catch(() => {});
+    }
   }
 
   await logAction({

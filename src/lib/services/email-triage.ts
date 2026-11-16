@@ -10,6 +10,7 @@ import { sendWhatsApp } from "./whatsapp";
 import { forwardToN8n, n8nTarget } from "./n8n";
 import { isQuietHours } from "../time";
 import { sendPush } from "./push";
+import { urgentEmailMessage } from "./notifications";
 
 export interface EmailScore {
   score: number;
@@ -170,11 +171,7 @@ export async function syncEmails(cfg: ResolvedConfig, opts: { alert?: boolean } 
     for (const e of urgent) {
       const text = `${cfg.ownerName}, urgent email from ${e.fromName}: ${e.subject}. ${e.summary}`;
       if (cfg.pushUrgentEmails) {
-        await sendPush(
-          cfg,
-          { title: `🚨 ${e.fromName}: ${e.subject}`.slice(0, 120), body: e.summary, url: "/", tag: `email-${e.id}`, urgent: true },
-          "urgent-email",
-        ).catch(() => {});
+        await sendPush(cfg, urgentEmailMessage(e), "urgent-email").catch(() => {});
       }
       if (n8nTarget(cfg, "emailTriage")) await forwardToN8n(cfg, "emailTriage", { email: e, message: text });
       if ((cfg.urgentAlertChannel === "whatsapp" || cfg.urgentAlertChannel === "both") && cfg.personalPhone) {

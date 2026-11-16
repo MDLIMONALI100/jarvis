@@ -27,6 +27,13 @@ export type Cfg = Record<string, unknown> & {
   speakResponses: boolean;
   pushMeetings: boolean;
   pushUrgentEmails: boolean;
+  pushMeetingStart: boolean;
+  pushBriefing: boolean;
+  briefingTime: string;
+  pushDigest: boolean;
+  digestTime: string;
+  pushWhatsApp: boolean;
+  pushSystem: boolean;
   emailRules: string;
   vipSenders: string;
   importantKeywords: string;

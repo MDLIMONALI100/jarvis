@@ -1,0 +1,12 @@
+-- More notification types. Additive only.
+ALTER TABLE "UserConfig" ADD COLUMN "pushMeetingStart" BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE "UserConfig" ADD COLUMN "pushBriefing" BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE "UserConfig" ADD COLUMN "briefingTime" TEXT NOT NULL DEFAULT '08:00';
+ALTER TABLE "UserConfig" ADD COLUMN "pushDigest" BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE "UserConfig" ADD COLUMN "digestTime" TEXT NOT NULL DEFAULT '18:00';
+ALTER TABLE "UserConfig" ADD COLUMN "pushWhatsApp" BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE "UserConfig" ADD COLUMN "pushSystem" BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE "UserConfig" ADD COLUMN "lastBriefingDate" TEXT NOT NULL DEFAULT '';
+ALTER TABLE "UserConfig" ADD COLUMN "lastDigestDate" TEXT NOT NULL DEFAULT '';
+ALTER TABLE "UserConfig" ADD COLUMN "lastSystemAlert" TEXT NOT NULL DEFAULT '';
+ALTER TABLE "MeetingReminder" ADD COLUMN "startNotified" BOOLEAN NOT NULL DEFAULT false;

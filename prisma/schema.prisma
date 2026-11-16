@@ -84,6 +84,16 @@ model UserConfig {
   vapidPrivateKey  String?
   pushMeetings     Boolean @default(true)
   pushUrgentEmails Boolean @default(true)
+  pushMeetingStart Boolean @default(true)
+  pushBriefing     Boolean @default(true)
+  briefingTime     String  @default("08:00")
+  pushDigest       Boolean @default(true)
+  digestTime       String  @default("18:00")
+  pushWhatsApp     Boolean @default(true)
+  pushSystem       Boolean @default(true)
+  lastBriefingDate String  @default("")
+  lastDigestDate   String  @default("")
+  lastSystemAlert  String  @default("")
 
   // Voice UI preferences (browser TTS)
   voiceName      String  @default("")
@@ -151,6 +161,7 @@ model MeetingReminder {
   callTriggered Boolean   @default(false)
   triggeredAt   DateTime?
   callRef       String?
+  startNotified Boolean   @default(false)
   isMock        Boolean   @default(false)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
